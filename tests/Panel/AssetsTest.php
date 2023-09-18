@@ -213,9 +213,11 @@ class AssetsTest extends TestCase
 		$favicons = $assets->favicons();
 
 		// icons
-		$this->assertSame($base . '/apple-touch-icon.png', $favicons['apple-touch-icon']['url']);
-		$this->assertSame($base . '/favicon.svg', $favicons['shortcut icon']['url']);
-		$this->assertSame($base . '/favicon.png', $favicons['alternate icon']['url']);
+		$this->assertSame($base . '/apple-touch-icon.png', $favicons[0]['href']);
+		$this->assertSame($base . '/favicon.png', $favicons[1]['href']);
+		$this->assertSame($base . '/favicon.svg', $favicons[2]['href']);
+		$this->assertSame($base . '/apple-touch-icon-dark.png', $favicons[3]['href']);
+		$this->assertSame($base . '/favicon-dark.png', $favicons[4]['href']);
 	}
 
 	/**
@@ -229,9 +231,11 @@ class AssetsTest extends TestCase
 		$base     = 'http://sandbox.test:3000';
 		$favicons = $assets->favicons();
 
-		$this->assertSame($base . '/apple-touch-icon.png', $favicons['apple-touch-icon']['url']);
-		$this->assertSame($base . '/favicon.svg', $favicons['shortcut icon']['url']);
-		$this->assertSame($base . '/favicon.png', $favicons['alternate icon']['url']);
+		$this->assertSame($base . '/apple-touch-icon.png', $favicons[0]['href']);
+		$this->assertSame($base . '/favicon.png', $favicons[1]['href']);
+		$this->assertSame($base . '/favicon.svg', $favicons[2]['href']);
+		$this->assertSame($base . '/apple-touch-icon-dark.png', $favicons[3]['href']);
+		$this->assertSame($base . '/favicon-dark.png', $favicons[4]['href']);
 	}
 
 	/**
@@ -244,13 +248,15 @@ class AssetsTest extends TestCase
 			'options' => [
 				'panel' => [
 					'favicon' => [
-						'shortcut icon' => [
+						[
+							'rel'  => 'shortcut icon',
 							'type' => 'image/svg+xml',
-							'url'  => 'assets/my-favicon.svg',
+							'href' => 'assets/my-favicon.svg',
 						],
-						'alternate icon' => [
+						[
+							'rel'  => 'alternate icon',
 							'type' => 'image/png',
-							'url'  => 'assets/my-favicon.png',
+							'href' => 'assets/my-favicon.png',
 						]
 					]
 				]
@@ -262,8 +268,8 @@ class AssetsTest extends TestCase
 		$favicons = $assets->favicons();
 
 		// icons
-		$this->assertSame('assets/my-favicon.svg', $favicons['shortcut icon']['url']);
-		$this->assertSame('assets/my-favicon.png', $favicons['alternate icon']['url']);
+		$this->assertSame('/assets/my-favicon.svg', $favicons[0]['href']);
+		$this->assertSame('/assets/my-favicon.png', $favicons[1]['href']);
 	}
 
 	/**
@@ -285,8 +291,9 @@ class AssetsTest extends TestCase
 		$favicons = $assets->favicons();
 
 		// icons
-		$this->assertSame('image/x-icon', $favicons['shortcut icon']['type']);
-		$this->assertSame('assets/favicon.ico', $favicons['shortcut icon']['url']);
+		$this->assertSame('shortcut icon', $favicons[0]['rel']);
+		$this->assertSame('image/x-icon', $favicons[0]['type']);
+		$this->assertSame('/assets/favicon.ico', $favicons[0]['href']);
 	}
 
 	/**
@@ -324,9 +331,77 @@ class AssetsTest extends TestCase
 		$favicons = $assets->favicons();
 
 		// favicons
-		$this->assertSame($base . '/apple-touch-icon.png', $favicons['apple-touch-icon']['url']);
-		$this->assertSame($base . '/favicon.svg', $favicons['shortcut icon']['url']);
-		$this->assertSame($base . '/favicon.png', $favicons['alternate icon']['url']);
+		$this->assertSame($base . '/apple-touch-icon.png', $favicons[0]['href']);
+		$this->assertSame($base . '/favicon.png', $favicons[1]['href']);
+		$this->assertSame($base . '/favicon.svg', $favicons[2]['href']);
+	}
+
+	/**
+	 * @todo Remove backward compatibility part test in v5
+	 */
+	public function testFaviconsWithRelIndex(): void
+	{
+		// array
+		$this->app->clone([
+			'options' => [
+				'panel' => [
+					'favicon' => [
+						'shortcut icon' => [
+							'type' => 'image/svg+xml',
+							'url'  => 'assets/my-favicon.svg',
+						],
+						'alternate icon' => [
+							'type' => 'image/png',
+							'url'  => 'assets/my-favicon.png',
+						]
+					]
+				]
+			]
+		]);
+
+		// default asset setup
+		$assets  = new Assets();
+		$favicons = $assets->favicons();
+
+		// icons
+		$this->assertSame('shortcut icon', $favicons[0]['rel']);
+		$this->assertSame('/assets/my-favicon.svg', $favicons[0]['href']);
+		$this->assertSame('alternate icon', $favicons[1]['rel']);
+		$this->assertSame('/assets/my-favicon.png', $favicons[1]['href']);
+	}
+
+	/**
+	 * @todo Remove backward compatibility part test in v5
+	 */
+	public function testFaviconsWithUrlOption(): void
+	{
+		// array
+		$this->app->clone([
+			'options' => [
+				'panel' => [
+					'favicon' => [
+						[
+							'rel'  => 'shortcut icon',
+							'type' => 'image/svg+xml',
+							'url'  => 'assets/my-favicon.svg',
+						],
+						[
+							'rel'  => 'alternate icon',
+							'type' => 'image/png',
+							'url'  => 'assets/my-favicon.png',
+						]
+					]
+				]
+			]
+		]);
+
+		// default asset setup
+		$assets  = new Assets();
+		$favicons = $assets->favicons();
+
+		// icons
+		$this->assertSame('/assets/my-favicon.svg', $favicons[0]['href']);
+		$this->assertSame('/assets/my-favicon.png', $favicons[1]['href']);
 	}
 
 	/**

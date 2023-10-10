@@ -28,8 +28,6 @@ use Throwable;
 class Plugin
 {
 	protected array $assets;
-	protected array $extends;
-	protected string $name;
 	protected string $root;
 
 	// caches
@@ -42,14 +40,15 @@ class Plugin
 	 *
 	 * @throws \Kirby\Exception\InvalidArgumentException If the plugin name has an invalid format
 	 */
-	public function __construct(string $name, array $extends = [])
-	{
+	public function __construct(
+		protected string $name,
+		protected array $extends = [],
+		protected string|null $version = null
+	) {
 		static::validateName($name);
 
-		$this->name    = $name;
-		$this->extends = $extends;
-		$this->root    = $extends['root'] ?? dirname(debug_backtrace()[0]['file']);
-		$this->info    = empty($extends['info']) === false && is_array($extends['info']) ? $extends['info'] : null;
+		$this->root = $extends['root'] ?? dirname(debug_backtrace()[0]['file']);
+		$this->info = empty($extends['info']) === false && is_array($extends['info']) ? $extends['info'] : null;
 
 		unset($this->extends['root'], $this->extends['info']);
 	}
@@ -333,8 +332,8 @@ class Plugin
 	 */
 	public function version(): string|null
 	{
-		$composerName = $this->info()['name'] ?? null;
-		$version      = $this->info()['version'] ?? null;
+		$composerName = $this->info()['name']    ?? null;
+		$version      = $this->info()['version'] ?? $this->version ?? null;
 
 		try {
 			// if plugin doesn't have version key in composer.json file

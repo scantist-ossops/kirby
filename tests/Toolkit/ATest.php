@@ -78,6 +78,115 @@ class ATest extends TestCase
 	}
 
 	/**
+	 * @covers ::count
+	 */
+	public function testCount()
+	{
+		$array = $this->_array();
+
+		$this->assertSame(3, A::count($array));
+		$this->assertSame(2, A::count(['cat', 'dog']));
+		$this->assertSame(0, A::count([]));
+	}
+
+	/**
+	 * @covers ::every
+	 */
+	public function testEvery()
+	{
+		// The value should be passed to the callback
+		A::every(['foo', 'bar'], function ($value) {
+			$this->assertTrue(is_string($value), 'The value should be passed to the callback');
+		});
+
+		// The key should be passed to the callback
+		A::every(['foo' => 1, 'bar' => 2], function ($value, $key = null) {
+			$this->assertTrue(is_string($key), 'The key should be passed to the callback');
+		});
+
+		// the array should be passed to the callback
+		$arr = ['foo'];
+		A::every($arr, function ($value, $key = null, $array = null) use ($arr) {
+			$this->assertSame($array, $arr, 'The array should be passed to the callback');
+		});
+
+		// It should return false if any callback returns false
+		$this->assertFalse(A::every(['foo', 'bar'], function ($value) {
+			return $value === 'foo';
+		}), 'It should return false if any callback returns false');
+
+		// It should return early if any callback returns false
+		$counter = 0;
+		A::every(['foo', 'bar', 'baz'], function ($value) use (&$counter) {
+			$counter++;
+			return $value === 'foo';
+		});
+		$this->assertSame(2, $counter, 'It should return early if any callback returns false');
+
+		// falsy values should be treated as false
+		$this->assertFalse(A::every(['foo', 'bar', ''], function ($value) {
+			return $value;
+		}), 'falsy values should be treated as false');
+
+		// truthy values should be treated as true
+		$this->assertTrue(A::every(['foo', 'bar', 'baz'], function ($value) {
+			return $value;
+		}), 'truthy values should be treated as true');
+	}
+
+	/**
+	 * @covers ::find
+	 */
+	public function testFind()
+	{
+		$array = $this->_array();
+
+		// The value should be passed to the callback
+		$this->assertSame('miao', A::find($array, function ($value) {
+			return $value === 'miao';
+		}), 'It should return the first value that matches the callback');
+
+		// The key should be passed to the callback
+		$this->assertSame('miao', A::find($array, function ($value = null, $key = null) {
+			return $key === 'cat';
+		}), 'It should pass the key to the callback');
+
+		// The array should be passed to the callback
+		$arr = ['foo'];
+		A::find($arr, function ($value = null, $key = null, $array = null) use ($arr) {
+			$this->assertSame($array, $arr, 'The array should be passed to the callback');
+		});
+
+		// It should return null if no value matches the callback
+		$this->assertNull(A::find($array, function ($value) {
+			return $value === 'MISSING';
+		}), 'It should return null if no value matches the callback');
+
+		// It should return null if the array is empty
+		$this->assertNull(A::find([], function ($value) {
+			return true;
+		}), 'It should return null if the array is empty');
+
+		// It should return early if a value matches the callback
+		$counter = 0;
+		A::find(['foo', 'bar', 'baz'], function ($value) use (&$counter) {
+			$counter++;
+			return $value === 'bar';
+		});
+		$this->assertSame(2, $counter, 'It should return early if a value matches the callback');
+
+		// falsy values should be treated as false
+		$this->assertSame('foo', A::find(['', 'foo', 'bar'], function ($value) {
+			return $value;
+		}), 'falsy values should be treated as false');
+
+		// truthy values should be treated as true
+		$this->assertSame('foo', A::find(['foo', 'bar', 'baz'], function ($value) {
+			return $value;
+		}), 'truthy values should be treated as true');
+	}
+
+	/**
 	 * @covers ::get
 	 */
 	public function testGet()
@@ -165,6 +274,19 @@ class ATest extends TestCase
 
 		$this->assertNull(A::get($data, 'alexander.the.greate'));
 		$this->assertSame('not great yet', A::get($data, 'alexander'));
+	}
+
+	/**
+	 * @covers ::has
+	 */
+	public function testHas()
+	{
+		$array = $this->_array();
+
+		$this->assertTrue(A::has($array, 'miao'));
+		$this->assertFalse(A::has($array, 'cat'));
+		$this->assertFalse(A::has($array, 4));
+		$this->assertFalse(A::has($array, ['miao']));
 	}
 
 	/**
@@ -351,9 +473,9 @@ class ATest extends TestCase
 	public function testPluck()
 	{
 		$array = [
-			[ 'id' => 1, 'username' => 'bastian'],
-			[ 'id' => 2, 'username' => 'sonja'],
-			[ 'id' => 3, 'username' => 'lukas']
+			['id' => 1, 'username' => 'bastian'],
+			['id' => 2, 'username' => 'sonja'],
+			['id' => 3, 'username' => 'lukas']
 		];
 
 		$this->assertSame([
@@ -374,6 +496,106 @@ class ATest extends TestCase
 		$this->assertSame($array['cat'], $shuffled['cat']);
 		$this->assertSame($array['dog'], $shuffled['dog']);
 		$this->assertSame($array['bird'], $shuffled['bird']);
+	}
+
+	/**
+	 * @covers ::reduce
+	 */
+	public function testReduce()
+	{
+		$array = $this->_array();
+
+		$reduced = A::reduce($array, function ($carry, $item) {
+			return $carry . $item;
+		}, '');
+		$this->assertSame('miaowufftweet', $reduced);
+
+		$reduced = A::reduce([1, 2, 3], function ($carry, $item) {
+			return $carry + $item;
+		}, 42);
+		$this->assertSame(48, $reduced);
+
+		$reduced = A::reduce([], function ($carry, $item) {
+			return $carry + $item;
+		});
+		$this->assertSame(null, $reduced);
+	}
+
+	/**
+	 * @covers ::slice
+	 */
+	public function testSlice()
+	{
+		$array = $this->_array();
+
+		$this->assertSame(['cat' => 'miao'], A::slice($array, 0, 1));
+		$this->assertSame(['dog' => 'wuff', 'bird' => 'tweet'], A::slice($array, 1));
+		$this->assertSame(['bird' => 'tweet'], A::slice($array, -1));
+		$this->assertSame(['dog' => 'wuff'], A::slice($array, -2, 1));
+		$this->assertSame($array, A::slice($array, 0));
+	}
+
+	/**
+	 * @covers ::some
+	 */
+	public function testSome()
+	{
+		// The value should be passed to the callback
+		A::some(['foo', 'bar'], function ($value = null) {
+			$this->assertTrue(is_string($value), 'The value should be passed to the callback');
+		});
+
+		// The key should be passed to the callback
+		A::some(['foo' => 1, 'bar' => 2], function ($value = null, $key = null) {
+			$this->assertTrue(is_string($key), 'The key should be passed to the callback');
+		});
+
+		// the array should be passed to the callback
+		$arr = ['foo'];
+		A::some($arr, function ($value = null, $key = null, $array = null) use ($arr) {
+			$this->assertSame($array, $arr, 'The array should be passed to the callback');
+		});
+
+		// It should return false if all callbacks returns false
+		$this->assertFalse(A::some(['foo', 'bar'], function () {
+			return false;
+		}), 'It should return false if all callbacks returns false');
+
+		// It should return true if any callback returns true
+		$this->assertTrue(A::some(['foo', 'bar'], function ($value) {
+			return $value === 'foo';
+		}), 'It should return true if any callback returns true');
+
+		// It should return early if any callback returns true
+		$counter = 0;
+		A::some(['foo', 'bar', 'baz'], function () use (&$counter) {
+			$counter++;
+			return true;
+		});
+		$this->assertSame(1, $counter, 'It should return early if any callback returns true');
+
+		// falsy values should be treated as false
+		$this->assertFalse(A::some(['', 0, null], function ($value) {
+			return $value;
+		}), 'falsy values should be treated as false');
+
+		// truthy values should be treated as true
+		$this->assertTrue(A::some(['foo'], function ($value) {
+			return $value;
+		}), 'truthy values should be treated as true');
+	}
+
+	/**
+	 * @covers ::sum
+	 */
+	public function testSum()
+	{
+		$array = $this->_array();
+
+		$this->assertSame(0, A::sum([]));
+		$this->assertSame(6, A::sum([1, 2, 3]));
+		$this->assertSame(6, A::sum([1, -1, 6]));
+		$this->assertSame(6.0, A::sum([1.2, 2.4, 2.4]));
 	}
 
 	/**
@@ -712,9 +934,9 @@ class ATest extends TestCase
 	public function testSort()
 	{
 		$array = [
-			[ 'id' => 1, 'username' => 'bastian'],
-			[ 'id' => 2, 'username' => 'sonja'],
-			[ 'id' => 3, 'username' => 'lukas']
+			['id' => 1, 'username' => 'bastian'],
+			['id' => 2, 'username' => 'sonja'],
+			['id' => 3, 'username' => 'lukas']
 		];
 
 		// ASC
@@ -971,7 +1193,7 @@ class ATest extends TestCase
 		$this->assertSame(['dog' => 'wuff', 'bird' => 'tweet'], A::without($associativeArray, ['this', 'cat', 'doesnt', 'exist']));
 
 		$this->assertSame([0 => 'cat', 4 => 'dog', 5 => 'bird'], A::without($indexedArray, range(1, 3)));
-		$this->assertSame([1 => 'dog', 2 => 'bird', 3 => 'cat', 4=> 'dog', 5 => 'bird'], A::without($indexedArray, 0));
+		$this->assertSame([1 => 'dog', 2 => 'bird', 3 => 'cat', 4 => 'dog', 5 => 'bird'], A::without($indexedArray, 0));
 		$this->assertSame(['cat', 'dog', 'bird', 'cat', 'dog', 'bird'], A::without($indexedArray, -1));
 	}
 }

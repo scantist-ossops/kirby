@@ -67,6 +67,107 @@ class UserTest extends TestCase
 		$user = new User(['email' => []]);
 	}
 
+	/**
+	 * @covers ::isAdmin
+	 */
+	public function testIsAdmin()
+	{
+		$user = new User([
+			'email' => 'test@getkirby.com',
+			'role'  => 'admin'
+		]);
+
+		$this->assertTrue($user->isAdmin());
+
+		$user = new User([
+			'email' => 'test@getkirby.com',
+			'role'  => 'editor'
+		]);
+
+		$this->assertFalse($user->isAdmin());
+	}
+
+	/**
+	 * @covers ::isKirby
+	 */
+	public function testIsKirby()
+	{
+		$user = new User([
+			'id'   => 'kirby',
+			'role' => 'admin'
+		]);
+		$this->assertTrue($user->isKirby());
+
+		$user = new User([
+			'role' => 'admin'
+		]);
+		$this->assertFalse($user->isKirby());
+
+		$user = new User([
+			'id'   => 'kirby',
+		]);
+		$this->assertFalse($user->isKirby());
+
+		$user = new User([
+			'emai' => 'kirby@getkirby.com',
+		]);
+		$this->assertFalse($user->isKirby());
+	}
+
+	/**
+	 * @covers ::isLoggedIn
+	 */
+	public function testIsLoggedIn()
+	{
+		$app = new App([
+			'roots' => [
+				'index' => '/dev/null'
+			],
+			'users' => [
+				['email' => 'a@getkirby.com'],
+				['email' => 'b@getkirby.com']
+			],
+		]);
+
+		$a = $app->user('a@getkirby.com');
+		$b = $app->user('b@getkirby.com');
+
+		$this->assertFalse($a->isLoggedIn());
+		$this->assertFalse($b->isLoggedIn());
+
+		$app->impersonate('a@getkirby.com');
+
+		$this->assertTrue($a->isLoggedIn());
+		$this->assertFalse($b->isLoggedIn());
+
+		$app->impersonate('b@getkirby.com');
+
+		$this->assertFalse($a->isLoggedIn());
+		$this->assertTrue($b->isLoggedIn());
+	}
+
+	/**
+	 * @covers ::isNobody
+	 */
+	public function testIsNobody()
+	{
+		$user = new User([
+			'id'   => 'nobody',
+			'role' => 'nobody'
+		]);
+		$this->assertTrue($user->isNobody());
+
+		$user = new User([
+			'role' => 'nobody'
+		]);
+		$this->assertFalse($user->isNobody());
+
+		$user = new User([
+			'id' => 'nobody',
+		]);
+		$this->assertTrue($user->isNobody());
+	}
+
 	public function testName()
 	{
 		$user = new User([
@@ -193,12 +294,39 @@ class UserTest extends TestCase
 		Dir::remove($index);
 	}
 
+	public function testPasswordTimestamp()
+	{
+		$app = new App([
+			'roots' => [
+				'index'    => $this->tmp,
+				'accounts' => $this->tmp
+			]
+		]);
+
+		// create a user file
+		F::write($this->tmp . '/test/index.php', '<?php return [];');
+
+		$user = $app->user('test');
+		$this->assertNull($user->passwordTimestamp());
+
+		// create a password file
+		F::write($this->tmp . '/test/.htpasswd', 'a very secure hash');
+		touch($this->tmp . '/test/.htpasswd', 1337000000);
+
+		$this->assertSame(1337000000, $user->passwordTimestamp());
+
+		// timestamp is not cached
+		touch($this->tmp . '/test/.htpasswd', 1338000000);
+		$this->assertSame(1338000000, $user->passwordTimestamp());
+	}
+
 	public function passwordProvider()
 	{
 		return [
 			[null, false],
 			['', false],
 			['short', false],
+			[str_repeat('long', 300), false],
 			['invalid-password', false],
 			['correct-horse-battery-staple', true],
 		];
@@ -234,6 +362,21 @@ class UserTest extends TestCase
 		try {
 			$user->validatePassword('short');
 		} catch (\Kirby\Exception\InvalidArgumentException $e) {
+			$this->assertSame(
+				'Please enter a valid password. Passwords must be at least 8 characters long.',
+				$e->getMessage()
+			);
+			$this->assertSame(400, $e->getHttpCode());
+			$caught++;
+		}
+
+		try {
+			$user->validatePassword(str_repeat('long', 300));
+		} catch (\Kirby\Exception\InvalidArgumentException $e) {
+			$this->assertSame(
+				'Please enter a valid password. Passwords must not be longer than 1000 characters.',
+				$e->getMessage()
+			);
 			$this->assertSame(400, $e->getHttpCode());
 			$caught++;
 		}
@@ -241,11 +384,12 @@ class UserTest extends TestCase
 		try {
 			$user->validatePassword('longbutinvalid');
 		} catch (\Kirby\Exception\InvalidArgumentException $e) {
+			$this->assertSame('Wrong password', $e->getMessage());
 			$this->assertSame(401, $e->getHttpCode());
 			$caught++;
 		}
 
-		$this->assertSame(2, $caught);
+		$this->assertSame(3, $caught);
 	}
 
 	public function testValidateUndefinedPassword()
@@ -258,51 +402,6 @@ class UserTest extends TestCase
 		$user->validatePassword('test');
 	}
 
-	public function testIsAdmin()
-	{
-		$user = new User([
-			'email' => 'test@getkirby.com',
-			'role'  => 'admin'
-		]);
-
-		$this->assertTrue($user->isAdmin());
-
-		$user = new User([
-			'email' => 'test@getkirby.com',
-			'role'  => 'editor'
-		]);
-
-		$this->assertFalse($user->isAdmin());
-	}
-
-	public function testIsLoggedIn()
-	{
-		$app = new App([
-			'roots' => [
-				'index' => '/dev/null'
-			],
-			'users' => [
-				['email' => 'a@getkirby.com'],
-				['email' => 'b@getkirby.com']
-			],
-		]);
-
-		$a = $app->user('a@getkirby.com');
-		$b = $app->user('b@getkirby.com');
-
-		$this->assertFalse($a->isLoggedIn());
-		$this->assertFalse($b->isLoggedIn());
-
-		$app->impersonate('a@getkirby.com');
-
-		$this->assertTrue($a->isLoggedIn());
-		$this->assertFalse($b->isLoggedIn());
-
-		$app->impersonate('b@getkirby.com');
-
-		$this->assertFalse($a->isLoggedIn());
-		$this->assertTrue($b->isLoggedIn());
-	}
 
 	public function testQuery()
 	{

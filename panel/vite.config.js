@@ -1,51 +1,62 @@
 /* eslint-env node */
-import fs from "fs";
 import path from "path";
+
 import { defineConfig, splitVendorChunkPlugin } from "vite";
 import vue from "@vitejs/plugin-vue2";
+import { viteStaticCopy } from "vite-plugin-static-copy";
+import externalGlobals from "rollup-plugin-external-globals";
+
 import postcssAutoprefixer from "autoprefixer";
 import postcssCsso from "postcss-csso";
 import postcssDirPseudoClass from "postcss-dir-pseudo-class";
 import postcssLogical from "postcss-logical";
 
-let custom;
+import kirbyDev from "./scripts/vite-kirby-dev.js";
+
+let customServer;
 try {
-	custom = require("./vite.config.custom.js");
+	customServer = require("./vite.config.custom.js");
 } catch (err) {
-	custom = {};
+	customServer = {};
 }
 
 export default defineConfig(({ command }) => {
-	// Tell Kirby that we are in dev mode
-	if (command === "serve") {
-		// Create the flag file on start
-		const runningPath = __dirname + "/.vite-running";
-		fs.closeSync(fs.openSync(runningPath, "w"));
+	// gather plugins depending on environment
+	const plugins = [vue(), splitVendorChunkPlugin(), kirbyDev()];
 
-		// Delete the flag file on any kind of exit
-		for (const eventType of ["exit", "SIGINT", "uncaughtException"]) {
-			process.on(eventType, function (err) {
-				if (fs.existsSync(runningPath) === true) {
-					fs.unlinkSync(runningPath);
-				}
+	if (command === "build") {
+		plugins.push(
+			viteStaticCopy({
+				targets: [
+					{
+						src: "node_modules/vue/dist/vue.min.js",
+						rename: "vue.js",
+						dest: "js"
+					}
+				]
+			})
+		);
+	}
 
-				if (eventType === "uncaughtException") {
-					console.error(err);
-				}
-
-				process.exit();
-			});
-		}
+	if (!process.env.VITEST) {
+		plugins.push(
+			// Externalize Vue so it's not loaded from node_modules
+			// but accessed via window.Vue
+			{
+				...externalGlobals({ vue: "Vue" }),
+				enforce: "post"
+			}
+		);
 	}
 
 	const proxy = {
-		target: process.env.VUE_APP_DEV_SERVER || "http://sandbox.test",
+		target: process.env.VUE_APP_DEV_SERVER ?? "http://sandbox.test",
 		changeOrigin: true,
 		secure: false
 	};
 
 	return {
-		plugins: [vue(), splitVendorChunkPlugin()],
+		plugins,
 		define: {
 			// Fix vuelidate error
 			"process.env.BUILD": JSON.stringify("production")
@@ -64,7 +75,7 @@ export default defineConfig(({ command }) => {
 		},
 		optimizeDeps: {
 			entries: "src/**/*.{js,vue}",
-			exclude: ["vitest"]
+			exclude: ["vitest", "vue"]
 		},
 		css: {
 			postcss: {
@@ -79,10 +90,6 @@ export default defineConfig(({ command }) => {
 		resolve: {
 			alias: [
 				{
-					find: "vue",
-					replacement: "vue/dist/vue.esm.js"
-				},
-				{
 					find: "@",
 					replacement: path.resolve(__dirname, "src")
 				}
@@ -94,8 +101,9 @@ export default defineConfig(({ command }) => {
 				"/env": proxy,
 				"/media": proxy
 			},
+			open: proxy.target + "/panel",
 			port: 3000,
-			...custom
+			...customServer
 		},
 		test: {
 			environment: "jsdom",

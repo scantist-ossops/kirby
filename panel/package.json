@@ -30,20 +30,20 @@
 		"vuex": "^3.6.2"
 	},
 	"devDependencies": {
-		"@vitejs/plugin-vue2": "^2.2.0",
-		"eslint": "^8.53.0",
+		"@vitejs/plugin-vue2": "^2.3.1",
+		"eslint": "^8.54.0",
 		"eslint-config-prettier": "^9.0.0",
 		"eslint-plugin-vue": "^9.18.1",
 		"glob": "^10.3.10",
 		"jsdom": "^22.1.0",
 		"lightningcss": "^1.22.1",
 		"prettier": "^3.1.0",
-		"rollup-plugin-external-globals": "^0.9.0",
+		"rollup-plugin-external-globals": "^0.9.1",
 		"terser": "^5.24.0",
-		"vite": "^4.5.0",
-		"vite-plugin-static-copy": "^0.17.0",
+		"vite": "^5.0.2",
+		"vite-plugin-static-copy": "^0.17.1",
 		"vitest": "^0.34.6",
-		"vue-docgen-api": "^4.75.0",
+		"vue-docgen-api": "^4.75.1",
 		"vue-template-compiler": "^2.7.15"
 	},
 	"browserslist": [
